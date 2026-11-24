@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 // Fail closed if a disabled Workflow call reaches the permission UI.
-export function WorkflowPermissionRequest({ onReject }) {
+export function WorkflowPermissionRequest({ onReject, ..._props }) {
   const rejected = useRef(false)
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 // Fail closed if a disabled Monitor call reaches the permission UI.
-export function MonitorPermissionRequest({ onReject }) {
+export function MonitorPermissionRequest({ onReject, ..._props }) {
   const rejected = useRef(false)
 
   useEffect(() => {

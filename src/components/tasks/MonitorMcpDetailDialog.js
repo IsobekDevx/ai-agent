@@ -1,4 +1,4 @@
 // MCP monitoring is unavailable in CLI-only builds.
-export function MonitorMcpDetailDialog() {
+export function MonitorMcpDetailDialog(_props) {
   return null
 }
