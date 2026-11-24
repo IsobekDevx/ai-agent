@@ -1,0 +1,5 @@
+export async function runDaemonWorker(
+  _kind: string | undefined,
+): Promise<void> {
+  throw new Error('Daemon workers are unavailable in this build')
+}

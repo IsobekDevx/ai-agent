@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2024", "DOM"],
+    "jsx": "react-jsx",
+    "strict": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["./src/*"],
+      "src//*": ["./src/*"],
+      "react/compiler-runtime": ["./node_modules/react-compiler-runtime/dist/index.d.ts"],
+      "bun:bundle": ["./src/shims/bun-bundle.ts"],
+      "bun:ffi": ["./src/shims/bun-ffi.ts"],
+      "color-diff-napi": ["./src/native-ts/color-diff/index.ts"],
+      "image-processor-napi": ["./src/native-ts/image-processor/index.ts"],
+      "modifiers-napi": ["./src/native-ts/modifiers/index.ts"],
+      "url-handler-napi": ["./src/native-ts/url-handler/index.ts"],
+      "audio-capture-napi": ["./src/shims/audio-capture-napi.ts"],
+      "@ant/claude-for-chrome-mcp": ["./src/shims/pkgs/@ant/claude-for-chrome-mcp/index.d.ts"],
+      "@ant/computer-use-mcp": ["./src/shims/pkgs/@ant/computer-use-mcp/index.d.ts"],
+      "@ant/computer-use-mcp/sentinelApps": ["./src/shims/pkgs/@ant/computer-use-mcp/sentinelApps.d.ts"],
+      "@ant/computer-use-mcp/types": ["./src/shims/pkgs/@ant/computer-use-mcp/types.d.ts"],
+      "@ant/computer-use-input": ["./src/shims/pkgs/@ant/computer-use-input/index.d.ts"],
+      "@ant/computer-use-swift": ["./src/shims/pkgs/@ant/computer-use-swift/index.d.ts"],
+      "@anthropic-ai/mcpb": ["./src/shims/pkgs/@anthropic-ai/mcpb/index.d.ts"],
+      "@anthropic-ai/sandbox-runtime": ["./src/shims/pkgs/@anthropic-ai/sandbox-runtime/index.d.ts"],
+      "@anthropic-ai/claude-agent-sdk": ["./src/shims/pkgs/@anthropic-ai/claude-agent-sdk/index.d.ts"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

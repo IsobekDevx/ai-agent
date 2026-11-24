@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false
+  },
+  "include": [
+    "src/shims/globals.d.ts",
+    "src/services/api/deepseekClient.ts",
+    "src/services/api/deepseekAdapter.ts",
+    "src/services/api/deepseek.ts",
+    "src/utils/model/providers.ts",
+    "src/components/DeepSeekAuthFlow.tsx",
+    "src/types/message.ts",
+    "src/types/tools.ts",
+    "src/types/utils.ts",
+    "src/types/connectorText.ts",
+    "src/constants/querySource.ts",
+    "src/query/transitions.ts"
+  ]
+}

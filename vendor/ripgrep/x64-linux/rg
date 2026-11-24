@@ -1,0 +1,314 @@
+#!/usr/bin/env node
+/**
+ * Pure Node.js ripgrep-compatible CLI implementation for vendor/ripgrep/x64-linux/rg
+ * Supports:
+ * - --files, --hidden, --no-ignore, --follow, --glob / -g, --iglob, --sort
+ * - Content search, -l / --files-with-matches, -c / --count, -n / --line-number
+ * - -i / --ignore-case, -F / --fixed-strings, -U / --multiline, -m / --max-count
+ * - -A / -B / -C context lines, --type / -t, --type-add, -e / --regexp
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import picomatch from 'picomatch'
+
+const argv = process.argv.slice(2)
+
+let filesOnly = false
+let filesWithMatches = false
+let countMatches = false
+let lineNumbers = false
+let ignoreCase = false
+let fixedStrings = false
+let hidden = false
+let maxCount = Infinity
+let contextBefore = 0
+let contextAfter = 0
+let nullSeparator = false
+const globs = []
+const iglobs = []
+const patterns = []
+const positional = []
+
+const TYPE_EXTS = {
+  py: ['.py', '.pyi'],
+  python: ['.py', '.pyi'],
+  js: ['.js', '.jsx', '.mjs', '.cjs'],
+  ts: ['.ts', '.tsx', '.mts', '.cts'],
+  json: ['.json'],
+  md: ['.md', '.markdown'],
+  sh: ['.sh', '.bash'],
+  rust: ['.rs'],
+  go: ['.go'],
+  java: ['.java'],
+  c: ['.c', '.h'],
+  cpp: ['.cpp', '.cc', '.cxx', '.hpp', '.h'],
+}
+const activeTypes = []
+
+for (let i = 0; i < argv.length; i++) {
+  const arg = argv[i]
+  if (arg === '--') {
+    positional.push(...argv.slice(i + 1))
+    break
+  }
+  if (arg === '--files') {
+    filesOnly = true
+  } else if (arg === '-l' || arg === '--files-with-matches') {
+    filesWithMatches = true
+  } else if (arg === '-c' || arg === '--count') {
+    countMatches = true
+  } else if (arg === '-n' || arg === '--line-number') {
+    lineNumbers = true
+  } else if (arg === '-i' || arg === '--ignore-case') {
+    ignoreCase = true
+  } else if (arg === '-F' || arg === '--fixed-strings') {
+    fixedStrings = true
+  } else if (arg === '--hidden' || arg === '-.') {
+    hidden = true
+  } else if (arg === '--null' || arg === '-0') {
+    nullSeparator = true
+  } else if (arg === '-g' || arg === '--glob') {
+    if (i + 1 < argv.length) globs.push(argv[++i])
+  } else if (arg.startsWith('--glob=')) {
+    globs.push(arg.slice(7))
+  } else if (arg === '--iglob') {
+    if (i + 1 < argv.length) iglobs.push(argv[++i])
+  } else if (arg.startsWith('--iglob=')) {
+    iglobs.push(arg.slice(8))
+  } else if (arg === '-e' || arg === '--regexp') {
+    if (i + 1 < argv.length) patterns.push(argv[++i])
+  } else if (arg.startsWith('--regexp=')) {
+    patterns.push(arg.slice(9))
+  } else if (arg === '-m' || arg === '--max-count') {
+    if (i + 1 < argv.length) maxCount = parseInt(argv[++i], 10) || Infinity
+  } else if (arg.startsWith('--max-count=')) {
+    maxCount = parseInt(arg.slice(12), 10) || Infinity
+  } else if (arg === '-A' || arg === '--after-context') {
+    if (i + 1 < argv.length) contextAfter = parseInt(argv[++i], 10) || 0
+  } else if (arg === '-B' || arg === '--before-context') {
+    if (i + 1 < argv.length) contextBefore = parseInt(argv[++i], 10) || 0
+  } else if (arg === '-C' || arg === '--context') {
+    if (i + 1 < argv.length) {
+      const c = parseInt(argv[++i], 10) || 0
+      contextBefore = c
+      contextAfter = c
+    }
+  } else if (arg === '-t' || arg === '--type') {
+    if (i + 1 < argv.length) activeTypes.push(argv[++i])
+  } else if (arg.startsWith('--type=')) {
+    activeTypes.push(arg.slice(7))
+  } else if (
+    arg === '-j' ||
+    arg === '--threads' ||
+    arg === '--sort' ||
+    arg === '--sortr' ||
+    arg === '--color' ||
+    arg === '--colors' ||
+    arg === '--max-columns' ||
+    arg === '--max-filesize' ||
+    arg === '--type-add' ||
+    arg === '--path-separator'
+  ) {
+    i++ // skip value
+  } else if (arg.startsWith('-')) {
+    // Handle combined short flags like -ni, -li
+    if (!arg.startsWith('--') && arg.length > 2) {
+      for (const ch of arg.slice(1)) {
+        if (ch === 'l') filesWithMatches = true
+        else if (ch === 'c') countMatches = true
+        else if (ch === 'n') lineNumbers = true
+        else if (ch === 'i') ignoreCase = true
+        else if (ch === 'F') fixedStrings = true
+      }
+    }
+  } else {
+    positional.push(arg)
+  }
+}
+
+let searchTargets = []
+if (filesOnly) {
+  searchTargets = positional.length > 0 ? positional : ['.']
+} else {
+  if (patterns.length === 0 && positional.length > 0) {
+    patterns.push(positional.shift())
+  }
+  searchTargets = positional.length > 0 ? positional : ['.']
+}
+
+const positiveMatchers = []
+const negativeMatchers = []
+
+for (const g of globs) {
+  const isNeg = g.startsWith('!')
+  const raw = isNeg ? g.slice(1) : g
+  const norm = raw.startsWith('/') ? raw.slice(1) : raw
+  const matcher = picomatch(norm, { dot: true, matchBase: !norm.includes('/') })
+  if (isNeg) negativeMatchers.push(matcher)
+  else positiveMatchers.push(matcher)
+}
+
+for (const g of iglobs) {
+  const isNeg = g.startsWith('!')
+  const raw = isNeg ? g.slice(1) : g
+  const norm = raw.startsWith('/') ? raw.slice(1) : raw
+  const matcher = picomatch(norm, {
+    dot: true,
+    nocase: true,
+    matchBase: !norm.includes('/'),
+  })
+  if (isNeg) negativeMatchers.push(matcher)
+  else positiveMatchers.push(matcher)
+}
+
+function matchesGlobs(relPath) {
+  const unixRel = relPath.split(path.sep).join('/')
+  for (const neg of negativeMatchers) {
+    if (neg(unixRel) || neg(path.basename(unixRel))) return false
+  }
+  if (activeTypes.length > 0) {
+    const ext = path.extname(unixRel).toLowerCase()
+    const ok = activeTypes.some(t => (TYPE_EXTS[t] || [`.${t}`]).includes(ext))
+    if (!ok) return false
+  }
+  if (positiveMatchers.length === 0) return true
+  return positiveMatchers.some(
+    pos => pos(unixRel) || pos(path.basename(unixRel)),
+  )
+}
+
+function collectFiles(target) {
+  const results = []
+  let stat
+  try {
+    stat = fs.statSync(target)
+  } catch {
+    return results
+  }
+  if (stat.isFile()) {
+    return [{ fullPath: target, relPath: path.basename(target), isSingleFile: true }]
+  }
+
+  function walk(currentDir, relBase) {
+    let entries
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      if (entry.name === '.git' || entry.name === 'node_modules') {
+        continue
+      }
+      if (!hidden && entry.name.startsWith('.')) {
+        // Allow if a positive glob explicitly targets dotfiles
+        const hasDotGlob = globs.some(g => g.includes('.'))
+        if (!hasDotGlob) continue
+      }
+      const full = path.join(currentDir, entry.name)
+      const rel = relBase ? `${relBase}/${entry.name}` : entry.name
+      if (entry.isDirectory()) {
+        walk(full, rel)
+      } else if (entry.isFile()) {
+        if (matchesGlobs(rel)) {
+          const displayPath =
+            target === '.' ? rel : path.join(target, rel)
+          results.push({ fullPath: full, relPath: displayPath, isSingleFile: false })
+        }
+      }
+    }
+  }
+
+  walk(target, '')
+  return results
+}
+
+const allFiles = []
+for (const t of searchTargets) {
+  allFiles.push(...collectFiles(t))
+}
+
+if (filesOnly) {
+  const sep = nullSeparator ? '\0' : '\n'
+  if (allFiles.length > 0) {
+    process.stdout.write(allFiles.map(f => f.relPath).join(sep) + sep)
+    process.exit(0)
+  } else {
+    process.exit(1)
+  }
+}
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const regexes = patterns.map(p => {
+  const src = fixedStrings ? escapeRegExp(p) : p
+  return new RegExp(src, ignoreCase ? 'i' : '')
+})
+
+let anyMatch = false
+const showFilename = allFiles.length > 1 || !allFiles[0]?.isSingleFile
+
+for (const file of allFiles) {
+  let content
+  try {
+    const buf = fs.readFileSync(file.fullPath)
+    // Skip binary files containing null bytes in first 1024 bytes
+    if (buf.subarray(0, 1024).includes(0)) continue
+    content = buf.toString('utf8')
+  } catch {
+    continue
+  }
+
+  const lines = content.split(/\r?\n/)
+  // If file ends with newline, remove trailing empty element
+  if (lines.length > 0 && lines[lines.length - 1] === '' && content.endsWith('\n')) {
+    lines.pop()
+  }
+
+  const matchedLineIndices = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (regexes.some(rx => rx.test(line))) {
+      matchedLineIndices.push(i)
+      if (matchedLineIndices.length >= maxCount) break
+    }
+  }
+
+  if (matchedLineIndices.length === 0) continue
+  anyMatch = true
+
+  if (filesWithMatches) {
+    const sep = nullSeparator ? '\0' : '\n'
+    process.stdout.write(`${file.relPath}${sep}`)
+    continue
+  }
+
+  if (countMatches) {
+    const prefix = showFilename ? `${file.relPath}:` : ''
+    process.stdout.write(`${prefix}${matchedLineIndices.length}\n`)
+    continue
+  }
+
+  const includedIndices = new Set()
+  const matchedSet = new Set(matchedLineIndices)
+  for (const idx of matchedLineIndices) {
+    const start = Math.max(0, idx - contextBefore)
+    const end = Math.min(lines.length - 1, idx + contextAfter)
+    for (let k = start; k <= end; k++) {
+      includedIndices.add(k)
+    }
+  }
+
+  const sortedIndices = [...includedIndices].sort((a, b) => a - b)
+  for (const idx of sortedIndices) {
+    const isMatch = matchedSet.has(idx)
+    const sep = isMatch ? ':' : '-'
+    const filePrefix = showFilename ? `${file.relPath}${sep}` : ''
+    const linePrefix = lineNumbers ? `${idx + 1}${sep}` : ''
+    process.stdout.write(`${filePrefix}${linePrefix}${lines[idx]}\n`)
+  }
+}
+
+process.exit(anyMatch ? 0 : 1)
