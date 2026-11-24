@@ -74,10 +74,10 @@ export type UserMessage = {
     role: 'user'
     content: string | ContentBlockParam[]
   }
-  isMeta?: true | boolean
-  isVisibleInTranscriptOnly?: true | boolean
-  isVirtual?: true | boolean
-  isCompactSummary?: true | boolean
+  isMeta?: boolean
+  isVisibleInTranscriptOnly?: boolean
+  isVirtual?: boolean
+  isCompactSummary?: boolean
   summarizeMetadata?: {
     messagesSummarized: number
     userContext?: string
@@ -90,6 +90,7 @@ export type UserMessage = {
   }
   imagePasteIds?: number[]
   sourceToolAssistantUUID?: UUID
+  sourceToolUseID?: string
   permissionMode?: PermissionMode
   origin?: MessageOrigin
   planContent?: string

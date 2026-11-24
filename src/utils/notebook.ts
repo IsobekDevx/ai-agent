@@ -103,7 +103,8 @@ function processCell(
     const outputs = cell.outputs
       .map(processOutput)
       .filter(
-        (output): output is NotebookCellSourceOutput => output !== undefined,
+        (output): output is ProcessedNotebookCellOutput =>
+          output !== undefined,
       )
     if (!includeLargeOutputs && isLargeOutputs(outputs)) {
       cellData.outputs = [

@@ -1332,6 +1332,10 @@ async function streamCompactSummary({
 
       while (!next.done) {
         const event = next.value
+        if (!event) {
+          next = await streamIter.next()
+          continue
+        }
 
         if (
           !hasStartedStreaming &&

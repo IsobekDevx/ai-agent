@@ -31,7 +31,7 @@ export type ProcessedNotebookCell = {
   execution_count?: number
   cell_id: string
   language?: string
-  outputs?: NotebookCellSourceOutput[]
+  outputs?: ProcessedNotebookCellOutput[]
 }
 
 export type NotebookCell = {

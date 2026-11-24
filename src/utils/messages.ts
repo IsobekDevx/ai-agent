@@ -381,7 +381,12 @@ function baseCreateAssistantMessage({
   error?: SDKAssistantMessageError
   errorDetails?: string
   isVirtual?: true
-  usage?: Usage
+  usage?: Usage & {
+    server_tool_use?: {
+      web_search_requests: number
+      web_fetch_requests: number
+    }
+  }
 }): AssistantMessage {
   return {
     type: 'assistant',
@@ -474,10 +479,10 @@ export function createUserMessage({
   origin,
 }: {
   content: string | ContentBlockParam[]
-  isMeta?: true
-  isVisibleInTranscriptOnly?: true
-  isVirtual?: true
-  isCompactSummary?: true
+  isMeta?: boolean
+  isVisibleInTranscriptOnly?: boolean
+  isVirtual?: boolean
+  isCompactSummary?: boolean
   toolUseResult?: unknown // Matches tool's `Output` type
   /** MCP protocol metadata to pass through to SDK consumers (never sent to model) */
   mcpMeta?: {
@@ -1260,7 +1265,7 @@ export function buildMessageLookups(
           )
         }
         if ((content.type as string) === 'advisor_tool_result') {
-          const result = content as {
+          const result = content as unknown as {
             tool_use_id: string
             content: { type: string }
           }
@@ -1315,8 +1320,8 @@ export function buildMessageLookups(
     if (msg.message.id === lastAssistantMsgId) continue
     for (const content of msg.message.content) {
       if (
-        (content.type === 'server_tool_use' ||
-          content.type === 'mcp_tool_use') &&
+        ((content.type as string) === 'server_tool_use' ||
+          (content.type as string) === 'mcp_tool_use') &&
         !resolvedToolUseIDs.has((content as { id: string }).id)
       ) {
         const id = (content as { id: string }).id
@@ -1464,7 +1469,9 @@ export function getToolUseIDs(
   return new Set(
     normalizedMessages
       .filter(
-        (_): _ is NormalizedAssistantMessage<BetaToolUseBlock> =>
+        (_): _ is NormalizedAssistantMessage & {
+          message: { content: [BetaToolUseBlock] }
+        } =>
           _.type === 'assistant' &&
           Array.isArray(_.message.content) &&
           _.message.content[0]?.type === 'tool_use',
@@ -2558,8 +2565,9 @@ function smooshIntoToolResult(
   // blocks are text — this is the common case (hook reminders into Bash/Read
   // results) and matches the legacy smoosh output shape.
   if (allText && (existing === undefined || typeof existing === 'string')) {
+    const existingText = typeof existing === 'string' ? existing : ''
     const joined = [
-      (existing ?? '').trim(),
+      existingText.trim(),
       ...blocks.map(b => (b as TextBlockParam).text.trim()),
     ]
       .filter(Boolean)
@@ -2728,23 +2736,18 @@ export function normalizeContentFromAPI(
         // Empty text blocks are handled at the display layer and must not be
         // altered here.
         return contentBlock
-      case 'code_execution_tool_result':
-      case 'mcp_tool_use':
-      case 'mcp_tool_result':
-      case 'container_upload':
-        // Beta-specific content blocks - pass through as-is
-        return contentBlock
-      case 'server_tool_use':
-        if (typeof contentBlock.input === 'string') {
-          return {
-            ...contentBlock,
-            input: (safeParseJSON(contentBlock.input) ?? {}) as {
-              [key: string]: unknown
-            },
+      default:
+        if ((contentBlock.type as string) === 'server_tool_use') {
+          const serverToolUse = contentBlock as unknown as { input: unknown }
+          if (typeof serverToolUse.input === 'string') {
+            return {
+              ...contentBlock,
+              input: (safeParseJSON(serverToolUse.input) ?? {}) as {
+                [key: string]: unknown
+              },
+            }
           }
         }
-        return contentBlock
-      default:
         return contentBlock
     }
   })
@@ -3030,19 +3033,22 @@ export function handleMessageFromStream(
           ])
           return
         }
-        case 'server_tool_use':
-        case 'web_search_tool_result':
-        case 'code_execution_tool_result':
-        case 'mcp_tool_use':
-        case 'mcp_tool_result':
-        case 'container_upload':
-        case 'web_fetch_tool_result':
-        case 'bash_code_execution_tool_result':
-        case 'text_editor_code_execution_tool_result':
-        case 'tool_search_tool_result':
-        case 'compaction':
-          onSetStreamMode('tool-input')
-          return
+        default:
+          switch (message.event.content_block.type as string) {
+            case 'server_tool_use':
+            case 'web_search_tool_result':
+            case 'code_execution_tool_result':
+            case 'mcp_tool_use':
+            case 'mcp_tool_result':
+            case 'container_upload':
+            case 'web_fetch_tool_result':
+            case 'bash_code_execution_tool_result':
+            case 'text_editor_code_execution_tool_result':
+            case 'tool_search_tool_result':
+            case 'compaction':
+              onSetStreamMode('tool-input')
+              return
+          }
       }
       return
     case 'content_block_delta':
@@ -4655,6 +4661,10 @@ export function getMessagesAfterCompactBoundary<
   return sliced
 }
 
+function getOriginObject(origin: MessageOrigin | undefined) {
+  return typeof origin === 'object' && origin !== null ? origin : undefined
+}
+
 export function shouldShowUserMessage(
   message: NormalizedMessage,
   isTranscriptMode: boolean,
@@ -4667,7 +4677,7 @@ export function shouldShowUserMessage(
     // the actual rendering.
     if (
       (feature('KAIROS') || feature('KAIROS_CHANNELS')) &&
-      message.origin?.kind === 'channel'
+      getOriginObject(message.origin)?.kind === 'channel'
     )
       return true
     return false
@@ -5233,7 +5243,8 @@ export function ensureToolResultPairing(
         seenToolUseIds.add(block.id)
       }
       if (
-        (block.type === 'server_tool_use' || block.type === 'mcp_tool_use') &&
+        ((block.type as string) === 'server_tool_use' ||
+          (block.type as string) === 'mcp_tool_use') &&
         !serverResultIds.has((block as { id: string }).id)
       ) {
         repaired = true
@@ -5408,7 +5419,9 @@ export function ensureToolResultPairing(
           .map(b => (b as ToolUseBlock | ToolUseBlockParam).id)
         const serverToolUses = m.message.content
           .filter(
-            b => b.type === 'server_tool_use' || b.type === 'mcp_tool_use',
+            b =>
+              (b.type as string) === 'server_tool_use' ||
+              (b.type as string) === 'mcp_tool_use',
           )
           .map(b => (b as { id: string }).id)
         const parts = [
@@ -5497,7 +5510,8 @@ export function wrapCommandText(
   raw: string,
   origin: MessageOrigin | undefined,
 ): string {
-  switch (origin?.kind) {
+  const originObject = getOriginObject(origin)
+  switch (originObject?.kind) {
     case 'task-notification':
       return `A background agent completed a task:\n${raw}`
     case 'coordinator':
