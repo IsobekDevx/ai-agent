@@ -2,13 +2,7 @@ import { useEffect, useRef } from 'react'
 
 // Snapshot updates are unavailable in CLI-only builds. Resolve the launcher
 // with its non-destructive default instead of leaving the setup dialog open.
-export function SnapshotUpdateDialog({
-  agentType,
-  scope,
-  snapshotTimestamp,
-  onComplete,
-  onCancel,
-}) {
+export function SnapshotUpdateDialog({ onCancel, ..._props }) {
   const cancelled = useRef(false)
 
   useEffect(() => {
@@ -20,6 +14,6 @@ export function SnapshotUpdateDialog({
   return null
 }
 
-export function buildMergePrompt(agentType, scope) {
+export function buildMergePrompt(_agentType, _scope) {
   return 'Agent memory snapshot updates are disabled in this build.'
 }
