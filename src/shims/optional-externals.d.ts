@@ -121,6 +121,7 @@ declare module "@aws-sdk/client-bedrock" {
   }
 
   export class ListInferenceProfilesCommand {
+    readonly input: ListInferenceProfilesCommandInput
     constructor(input: ListInferenceProfilesCommandInput)
   }
 
@@ -129,6 +130,7 @@ declare module "@aws-sdk/client-bedrock" {
   }
 
   export class GetInferenceProfileCommand {
+    readonly input: GetInferenceProfileCommandInput
     constructor(input: GetInferenceProfileCommandInput)
   }
 
@@ -159,6 +161,7 @@ declare module "@aws-sdk/client-bedrock-runtime" {
   }
 
   export class CountTokensCommand {
+    readonly input: CountTokensCommandInput
     constructor(input: CountTokensCommandInput)
   }
 
@@ -197,42 +200,8 @@ declare module "@aws-sdk/credential-provider-node" {
   }): () => Promise<AwsCredentials>
 }
 
-declare module "sharp" {
-  import type { Buffer } from "node:buffer"
-
-  export interface Metadata {
-    width?: number
-    height?: number
-    format?: string
-  }
-
-  export interface Sharp {
-    metadata(): Promise<Metadata>
-    resize(
-      width: number,
-      height: number,
-      options?: { fit?: string; withoutEnlargement?: boolean },
-    ): Sharp
-    jpeg(options?: { quality?: number }): Sharp
-    png(options?: {
-      compressionLevel?: number
-      palette?: boolean
-      colors?: number
-    }): Sharp
-    webp(options?: { quality?: number }): Sharp
-    toBuffer(): Promise<Buffer>
-  }
-
-  export interface SharpCreatorOptions {
-    create: {
-      width: number
-      height: number
-      channels: 3 | 4
-      background: { r: number; g: number; b: number }
-    }
-  }
-
-  function sharp(input: Buffer): Sharp
-  function sharp(options: SharpCreatorOptions): Sharp
-  export = sharp
-}
+// Sharp is an optional native dependency. The application already narrows its
+// dynamic import to a local structural Sharp subset, while one fallback relies
+// on CommonJS/ESM callable interop that cannot be represented by a typed module
+// namespace under bundler resolution.
+declare module "sharp"

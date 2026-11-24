@@ -19,6 +19,12 @@ export type NotebookCellSourceOutput = {
 
 export type NotebookCellOutput = NotebookCellSourceOutput
 
+export type ProcessedNotebookCellOutput = {
+  output_type: string
+  text?: string
+  image?: NotebookOutputImage
+}
+
 export type ProcessedNotebookCell = {
   cellType: NotebookCellType
   source: string

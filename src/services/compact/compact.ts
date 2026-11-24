@@ -171,7 +171,10 @@ export function stripImagesFromMessages(messages: Message[]): Message[] {
             toolHasMedia = true
             return { type: 'text' as const, text: '[image]' }
           }
-          if (item.type === 'document') {
+          if (
+            'type' in item &&
+            (item as { type?: string }).type === 'document'
+          ) {
             toolHasMedia = true
             return { type: 'text' as const, text: '[document]' }
           }

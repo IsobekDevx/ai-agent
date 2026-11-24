@@ -58,6 +58,7 @@ export type CompactMetadata = {
   userContext?: string
   messagesSummarized?: number
   direction?: PartialCompactDirection
+  preCompactDiscoveredTools?: string[]
   preservedSegment?: {
     headUuid: UUID
     anchorUuid: UUID
@@ -108,6 +109,8 @@ export type AssistantMessage = {
   message: BetaMessage & {
     content: BetaContentBlock[]
     usage: BetaUsage
+    container?: unknown
+    context_management?: unknown
   }
   requestId?: string
   apiError?: 'max_output_tokens' | string

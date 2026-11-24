@@ -1,4 +1,4 @@
-import type { Command } from 'commander'
+import type { Command } from '@commander-js/extra-typings'
 
 function unavailable(operation: string): Error {
   return new Error(`The ant-only ${operation} command is unavailable in this build`)
