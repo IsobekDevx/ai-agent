@@ -94,6 +94,9 @@ export function getContextWindowForModel(
       return antModel.contextWindow
     }
   }
+  if (model.toLowerCase().includes('deepseek')) {
+    return 128_000
+  }
   return MODEL_CONTEXT_WINDOW_DEFAULT
 }
 
@@ -195,6 +198,12 @@ export function getModelMaxOutputTokens(model: string): {
   } else if (m.includes('3-7-sonnet')) {
     defaultTokens = 32_000
     upperLimit = 64_000
+  } else if (m.includes('deepseek-reasoner') || m.includes('deepseek-v4-pro')) {
+    defaultTokens = 32_000
+    upperLimit = 64_000
+  } else if (m.includes('deepseek')) {
+    defaultTokens = 8_192
+    upperLimit = 32_000
   } else {
     defaultTokens = MAX_OUTPUT_TOKENS_DEFAULT
     upperLimit = MAX_OUTPUT_TOKENS_UPPER_LIMIT

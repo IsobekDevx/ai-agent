@@ -6,6 +6,7 @@ import { clearTrustedDeviceToken, enrollTrustedDevice } from '../../bridge/trust
 import type { LocalJSXCommandContext } from '../../commands.js';
 import { ConfigurableShortcutHint } from '../../components/ConfigurableShortcutHint.js';
 import { ConsoleOAuthFlow } from '../../components/ConsoleOAuthFlow.js';
+import { DeepSeekAuthFlow } from '../../components/DeepSeekAuthFlow.js';
 import { Dialog } from '../../components/design-system/Dialog.js';
 import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { Text } from '../../ink.js';
@@ -14,6 +15,7 @@ import { refreshPolicyLimits } from '../../services/policyLimits/index.js';
 import { refreshRemoteManagedSettings } from '../../services/remoteManagedSettings/index.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
 import { stripSignatureBlocks } from '../../utils/messages.js';
+import { getAPIProvider } from '../../utils/model/providers.js';
 import { checkAndDisableAutoModeIfNeeded, checkAndDisableBypassPermissionsIfNeeded, resetAutoModeGateCheck, resetBypassPermissionsCheck } from '../../utils/permissions/bypassPermissionsKillswitch.js';
 import { resetUserCache } from '../../utils/user.js';
 export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXCommandContext): Promise<React.ReactNode> {
@@ -80,7 +82,7 @@ export function Login(props) {
   }
   let t2;
   if ($[6] !== props.startingMessage || $[7] !== t1) {
-    t2 = <ConsoleOAuthFlow onDone={t1} startingMessage={props.startingMessage} />;
+    t2 = getAPIProvider() === 'deepseek' ? <DeepSeekAuthFlow onDone={t1} startingMessage={props.startingMessage} /> : <ConsoleOAuthFlow onDone={t1} startingMessage={props.startingMessage} />;
     $[6] = props.startingMessage;
     $[7] = t1;
     $[8] = t2;

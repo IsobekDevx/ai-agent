@@ -204,6 +204,7 @@ export default class App extends PureComponent<Props, State> {
     }
   }
   override componentDidCatch(error: Error) {
+    logError(error);
     this.handleExit(error);
   }
   handleSetRawMode = (isEnabled: boolean): void => {

@@ -12,7 +12,11 @@ import {
   type CanonicalModelId,
   type ModelKey,
 } from './configs.js'
-import { type APIProvider, getAPIProvider } from './providers.js'
+import {
+  type APIProvider,
+  getAPIProvider,
+  resolveDeepSeekModel,
+} from './providers.js'
 
 /**
  * Maps each model version to its provider-specific model ID string.
@@ -25,7 +29,10 @@ const MODEL_KEYS = Object.keys(ALL_MODEL_CONFIGS) as ModelKey[]
 function getBuiltinModelStrings(provider: APIProvider): ModelStrings {
   const out = {} as ModelStrings
   for (const key of MODEL_KEYS) {
-    out[key] = ALL_MODEL_CONFIGS[key][provider]
+    out[key] =
+      provider === 'deepseek'
+        ? resolveDeepSeekModel()
+        : ALL_MODEL_CONFIGS[key][provider]
   }
   return out
 }

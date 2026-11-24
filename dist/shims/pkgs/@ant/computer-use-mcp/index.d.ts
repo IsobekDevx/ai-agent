@@ -1,0 +1,18 @@
+export const DEFAULT_GRANT_FLAGS: any;
+export const API_RESIZE_PARAMS: any;
+export function targetImageSize(w: number, h: number): { width: number; height: number };
+export function buildComputerUseTools(...args: any[]): any[];
+export function bindSessionContext(...args: any[]): any;
+export function createComputerUseMcpServer(...args: any[]): any;
+export function getSentinelCategory(...args: any[]): any;
+export type ComputerUseSessionContext = any;
+export type CuCallToolResult = any;
+export type CuPermissionRequest = any;
+export type CuPermissionResponse = any;
+export type ScreenshotDims = any;
+export type CoordinateMode = any;
+export type CuSubGates = any;
+export type ComputerUseHostAdapter = any;
+export type CuGrantFlags = any;
+export type InstalledApp = any;
+export type RunningApp = any;

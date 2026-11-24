@@ -35,7 +35,15 @@ import { logForDebugging } from '../../utils/debug.js'
 import { isRunningOnHomespace } from '../../utils/envUtils.js'
 import { errorMessage } from '../../utils/errors.js'
 import { logError } from '../../utils/log.js'
-import { getAPIProvider } from '../../utils/model/providers.js'
+import {
+  clearStoredDeepSeekApiKey,
+  getAPIProvider,
+  getDeepSeekApiKeyWithSource,
+  getDeepSeekBaseUrl,
+  resolveDeepSeekModel,
+  saveStoredDeepSeekApiKey,
+} from '../../utils/model/providers.js'
+import { verifyDeepSeekApiKey } from '../../services/api/deepseekClient.js'
 import { getInitialSettings } from '../../utils/settings/settings.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import {
@@ -120,6 +128,30 @@ export async function authLogin({
   console?: boolean
   claudeai?: boolean
 }): Promise<void> {
+  if (getAPIProvider() === 'deepseek') {
+    const { key } = getDeepSeekApiKeyWithSource()
+    if (key) {
+      saveStoredDeepSeekApiKey(key)
+      try {
+        const ok = await verifyDeepSeekApiKey({ apiKey: key })
+        if (!ok) {
+          process.stderr.write('Error: Invalid DeepSeek API key (401 Unauthorized).\n')
+          process.exit(1)
+        }
+        process.stdout.write(
+          `DeepSeek API key verified and saved (endpoint: ${getDeepSeekBaseUrl()}, model: ${resolveDeepSeekModel()}).\n`,
+        )
+        process.exit(0)
+      } catch (err) {
+        process.stderr.write(`DeepSeek API verification failed: ${errorMessage(err)}\n`)
+        process.exit(1)
+      }
+    }
+    process.stderr.write(
+      'DeepSeek API key required. Set DEEPSEEK_API_KEY="your-key" or run interactive /login to enter and store your DeepSeek API key.\n',
+    )
+    process.exit(1)
+  }
   if (useConsole && claudeai) {
     process.stderr.write(
       'Error: --console and --claudeai cannot be used together.\n',
@@ -234,18 +266,25 @@ export async function authStatus(opts: {
   text?: boolean
 }): Promise<void> {
   const { source: authTokenSource, hasToken } = getAuthTokenSource()
-  const { source: apiKeySource } = getAnthropicApiKeyWithSource()
+  const { source: apiKeySource, key: activeApiKey } = getAnthropicApiKeyWithSource()
   const hasApiKeyEnvVar =
-    !!process.env.ANTHROPIC_API_KEY && !isRunningOnHomespace()
+    (getAPIProvider() === 'deepseek'
+      ? !!process.env.DEEPSEEK_API_KEY
+      : !!process.env.ANTHROPIC_API_KEY) && !isRunningOnHomespace()
   const oauthAccount = getOauthAccountInfo()
   const subscriptionType = getSubscriptionType()
   const using3P = isUsing3PServices()
   const loggedIn =
-    hasToken || apiKeySource !== 'none' || hasApiKeyEnvVar || using3P
+    hasToken ||
+    (apiKeySource !== 'none' && !!activeApiKey) ||
+    hasApiKeyEnvVar ||
+    using3P
 
   // Determine auth method
   let authMethod: string = 'none'
-  if (using3P) {
+  if (getAPIProvider() === 'deepseek') {
+    authMethod = activeApiKey ? 'deepseek_api_key' : 'none'
+  } else if (using3P) {
     authMethod = 'third_party'
   } else if (authTokenSource === 'claude.ai') {
     authMethod = 'claude.ai'
@@ -320,11 +359,18 @@ export async function authStatus(opts: {
 
 export async function authLogout(): Promise<void> {
   try {
+    if (getAPIProvider() === 'deepseek') {
+      clearStoredDeepSeekApiKey()
+    }
     await performLogout({ clearOnboarding: false })
   } catch {
     process.stderr.write('Failed to log out.\n')
     process.exit(1)
   }
-  process.stdout.write('Successfully logged out from your Anthropic account.\n')
+  process.stdout.write(
+    getAPIProvider() === 'deepseek'
+      ? 'Successfully cleared stored DeepSeek credentials.\n'
+      : 'Successfully logged out from your Anthropic account.\n',
+  )
   process.exit(0)
 }

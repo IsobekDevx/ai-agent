@@ -771,10 +771,15 @@ export function getAssistantMessageFromError(
 
   if (
     error instanceof Error &&
-    error.message.includes('Your credit balance is too low')
+    (error.message.includes('Your credit balance is too low') ||
+      error.message.includes('402 Insufficient Balance') ||
+      (error instanceof APIError && error.status === 402))
   ) {
     return createAssistantAPIErrorMessage({
-      content: CREDIT_BALANCE_TOO_LOW_ERROR_MESSAGE,
+      content:
+        getAPIProvider() === 'deepseek'
+          ? `${API_ERROR_MESSAGE_PREFIX}: ${error.message}`
+          : CREDIT_BALANCE_TOO_LOW_ERROR_MESSAGE,
       error: 'billing_error',
     })
   }

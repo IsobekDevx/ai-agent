@@ -73,15 +73,12 @@ export function FileWriteToolDiff(t0) {
   } else {
     t3 = $[12];
   }
-  let t4;
-  if ($[13] !== t3) {
-    t4 = <Box flexDirection="column"><Box borderColor="subtle" borderStyle="dashed" flexDirection="column" borderLeft={false} borderRight={false} paddingX={1}>{t3}</Box></Box>;
-    $[13] = t3;
-    $[14] = t4;
-  } else {
-    t4 = $[14];
-  }
-  return t4;
+  return <Box flexDirection="column">
+      <Box paddingX={1}>
+        <Text dimColor={true}>{fileExists ? "Your code <--> Proposed" : "New file (Proposed)"}</Text>
+      </Box>
+      <Box borderColor="subtle" borderStyle="dashed" flexDirection="column" borderLeft={false} borderRight={false} paddingX={1}>{t3}</Box>
+    </Box>;
 }
 function _temp(i) {
   return <NoSelect fromLeftEdge={true} key={`ellipsis-${i}`}><Text dimColor={true}>...</Text></NoSelect>;

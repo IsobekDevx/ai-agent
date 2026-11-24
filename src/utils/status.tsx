@@ -244,7 +244,8 @@ export function buildAPIProviderProperties(): Property[] {
     const providerLabel = {
       bedrock: 'AWS Bedrock',
       vertex: 'Google Vertex AI',
-      foundry: 'Microsoft Foundry'
+      foundry: 'Microsoft Foundry',
+      deepseek: 'DeepSeek'
     }[apiProvider];
     properties.push({
       label: 'API provider',
@@ -320,6 +321,11 @@ export function buildAPIProviderProperties(): Property[] {
         value: 'Microsoft Foundry auth skipped'
       });
     }
+  } else if (apiProvider === 'deepseek') {
+    properties.push({
+      label: 'DeepSeek base URL',
+      value: process.env.DEEPSEEK_BASE_URL?.trim() || 'https://api.deepseek.com'
+    });
   }
   const proxyUrl = getProxyUrl();
   if (proxyUrl) {

@@ -79,29 +79,17 @@ function DiffBody(t0) {
   return t1;
 }
 function DiffFrame(t0) {
-  const $ = _c(5);
   const {
     children,
     placeholder
   } = t0;
-  let t1;
-  if ($[0] !== children || $[1] !== placeholder) {
-    t1 = placeholder ? <Text dimColor={true}>…</Text> : children;
-    $[0] = children;
-    $[1] = placeholder;
-    $[2] = t1;
-  } else {
-    t1 = $[2];
-  }
-  let t2;
-  if ($[3] !== t1) {
-    t2 = <Box flexDirection="column"><Box borderColor="subtle" borderStyle="dashed" flexDirection="column" borderLeft={false} borderRight={false}>{t1}</Box></Box>;
-    $[3] = t1;
-    $[4] = t2;
-  } else {
-    t2 = $[4];
-  }
-  return t2;
+  const body = placeholder ? <Text dimColor={true}>…</Text> : children;
+  return <Box flexDirection="column">
+      <Box paddingX={1}>
+        <Text dimColor={true}>Your code &lt;--&gt; Proposed</Text>
+      </Box>
+      <Box borderColor="subtle" borderStyle="dashed" flexDirection="column" borderLeft={false} borderRight={false}>{body}</Box>
+    </Box>;
 }
 async function loadDiffData(file_path: string, edits: FileEdit[]): Promise<DiffData> {
   const valid = edits.filter(e => e.old_string != null && e.new_string != null);

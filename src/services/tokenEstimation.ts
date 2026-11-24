@@ -141,6 +141,9 @@ export async function countMessagesTokensWithAPI(
   messages: Anthropic.Beta.Messages.BetaMessageParam[],
   tools: Anthropic.Beta.Messages.BetaToolUnion[],
 ): Promise<number | null> {
+  if (getAPIProvider() === 'deepseek') {
+    return null
+  }
   return withTokenCountVCR(messages, tools, async () => {
     try {
       const model = getMainLoopModel()
@@ -252,6 +255,9 @@ export async function countTokensViaHaikuFallback(
   messages: Anthropic.Beta.Messages.BetaMessageParam[],
   tools: Anthropic.Beta.Messages.BetaToolUnion[],
 ): Promise<number | null> {
+  if (getAPIProvider() === 'deepseek') {
+    return null
+  }
   // Check if messages contain thinking blocks
   const containsThinking = hasThinkingBlocks(messages)
 

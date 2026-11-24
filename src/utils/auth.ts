@@ -10,7 +10,10 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import {
+  getAPIProvider,
+  getDeepSeekApiKeyWithSource,
+} from 'src/utils/model/providers.js'
 import {
   getIsNonInteractiveSession,
   preferThirdPartyAuthentication,
@@ -101,6 +104,8 @@ export function isAnthropicAuthEnabled(): boolean {
   // --bare: API-key-only, never OAuth.
   if (isBareMode()) return false
 
+  if (getAPIProvider() === 'deepseek') return false
+
   // `claude ssh` remote: ANTHROPIC_UNIX_SOCKET tunnels API calls through a
   // local auth-injecting proxy. The launcher sets CLAUDE_CODE_OAUTH_TOKEN as a
   // placeholder iff the local side is a subscriber (so the remote includes the
@@ -115,7 +120,8 @@ export function isAnthropicAuthEnabled(): boolean {
   const is3P =
     isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK) ||
     isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY) ||
+    getAPIProvider() === 'deepseek'
 
   // Check if user has configured an external API key source
   // This allows externally-provided API keys to work (without requiring proxy configuration)
@@ -151,6 +157,9 @@ export function isAnthropicAuthEnabled(): boolean {
 /** Where the auth token is being sourced from, if any. */
 // this code is closely related to isAnthropicAuthEnabled
 export function getAuthTokenSource() {
+  if (getAPIProvider() === 'deepseek') {
+    return { source: 'none' as const, hasToken: false }
+  }
   // --bare: API-key-only. apiKeyHelper (from --settings) is the only
   // bearer-token-shaped source allowed. OAuth env vars, FD tokens, and
   // keychain are ignored.
@@ -207,6 +216,7 @@ export function getAuthTokenSource() {
 
 export type ApiKeySource =
   | 'ANTHROPIC_API_KEY'
+  | 'DEEPSEEK_API_KEY'
   | 'apiKeyHelper'
   | '/login managed key'
   | 'none'
@@ -229,6 +239,13 @@ export function getAnthropicApiKeyWithSource(
   key: null | string
   source: ApiKeySource
 } {
+  if (getAPIProvider() === 'deepseek') {
+    const ds = getDeepSeekApiKeyWithSource()
+    if (ds.key) {
+      return { key: ds.key, source: ds.source }
+    }
+    return { key: null, source: 'none' }
+  }
   // --bare: hermetic auth. Only ANTHROPIC_API_KEY env or apiKeyHelper from
   // the --settings flag. Never touches keychain, config file, or approval
   // lists. 3P (Bedrock/Vertex/Foundry) uses provider creds, not this path.
@@ -1862,6 +1879,13 @@ export type UserAccountInfo = {
 
 export function getAccountInformation() {
   const apiProvider = getAPIProvider()
+  if (apiProvider === 'deepseek') {
+    const { key, source } = getAnthropicApiKeyWithSource()
+    return {
+      subscription: 'DeepSeek API',
+      ...(key ? { apiKeySource: source } : {}),
+    }
+  }
   // Only provide account info for first-party Anthropic API
   if (apiProvider !== 'firstParty') {
     return undefined

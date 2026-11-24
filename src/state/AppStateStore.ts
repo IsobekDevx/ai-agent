@@ -36,6 +36,7 @@ import type { PermissionMode } from '../utils/permissions/PermissionMode.js'
 import { getInitialSettings } from '../utils/settings/settings.js'
 import type { SettingsJson } from '../utils/settings/types.js'
 import { shouldEnableThinkingByDefault } from '../utils/thinking.js'
+import * as teammateUtils from '../utils/teammate.js'
 import type { Store } from './store.js'
 
 export type CompletionBoundary =
@@ -455,11 +456,6 @@ export type AppStateStore = Store<AppState>
 
 export function getDefaultAppState(): AppState {
   // Determine initial permission mode for teammates spawned with plan_mode_required
-  // Use lazy require to avoid circular dependency with teammate.ts
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const teammateUtils =
-    require('../utils/teammate.js') as typeof import('../utils/teammate.js')
-  /* eslint-enable @typescript-eslint/no-require-imports */
   const initialMode: PermissionMode =
     teammateUtils.isTeammate() && teammateUtils.isPlanModeRequired()
       ? 'plan'

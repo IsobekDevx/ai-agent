@@ -324,6 +324,32 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   }
 
   // PAYG 1P API: Default (Sonnet) + Sonnet 1M + Opus 4.6 + Opus 1M + Haiku
+  if (getAPIProvider() === 'deepseek') {
+    return [
+      getDefaultOptionForUser(fastMode),
+      {
+        value: 'deepseek-flash',
+        label: 'DeepSeek Flash',
+        description: 'deepseek-flash · Fast and efficient coding model (default)',
+      },
+      {
+        value: 'deepseek-v4-pro',
+        label: 'DeepSeek V4 Pro',
+        description: 'deepseek-v4-pro · Advanced reasoning and complex coding model',
+      },
+      {
+        value: 'deepseek-chat',
+        label: 'DeepSeek Chat',
+        description: 'deepseek-chat · Standard DeepSeek Chat Completions model',
+      },
+      {
+        value: 'deepseek-reasoner',
+        label: 'DeepSeek Reasoner',
+        description: 'deepseek-reasoner · DeepSeek thinking and reasoning model',
+      },
+    ]
+  }
+
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
     if (checkSonnet1mAccess()) {

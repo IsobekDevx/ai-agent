@@ -90,6 +90,9 @@ export default class Ink {
   private charPool: CharPool;
   private hyperlinkPool: HyperlinkPool;
   private exitPromise?: Promise<void>;
+  private resolveExitPromise: () => void = () => {};
+  private rejectExitPromise: (reason?: Error) => void = () => {};
+  private unsubscribeExit: () => void = () => {};
   private restoreConsole?: () => void;
   private restoreStderr?: () => void;
   private readonly unsubscribeTTYHandlers?: () => void;
@@ -214,6 +217,13 @@ export default class Ink {
       leading: true,
       trailing: true
     });
+
+    this.exitPromise = new Promise((resolve, reject) => {
+      this.resolveExitPromise = resolve;
+      this.rejectExitPromise = reject;
+    });
+    // Prevent unhandled rejection warning if unmount(error) is called before waitUntilExit()
+    this.exitPromise.catch(() => {});
 
     // Ignore last render after unmounting a tree to prevent empty output before exit
     this.isUnmounted = false;
@@ -344,9 +354,6 @@ export default class Ink {
       this.render(this.currentNode);
     }
   };
-  resolveExitPromise: () => void = () => {};
-  rejectExitPromise: (reason?: Error) => void = () => {};
-  unsubscribeExit: () => void = () => {};
 
   /**
    * Pause Ink and hand the terminal over to an external TUI (e.g. git

@@ -7,6 +7,7 @@ import {
   isAnthropicAuthEnabled,
   isClaudeAISubscriber,
 } from '../utils/auth.js'
+import { getAPIProvider } from '../utils/model/providers.js'
 
 export type VerificationStatus =
   | 'loading'
@@ -23,6 +24,12 @@ export type ApiKeyVerificationResult = {
 
 export function useApiKeyVerification(): ApiKeyVerificationResult {
   const [status, setStatus] = useState<VerificationStatus>(() => {
+    if (getAPIProvider() === 'deepseek') {
+      const { key, source } = getAnthropicApiKeyWithSource({
+        skipRetrievingKeyFromApiKeyHelper: true,
+      })
+      return key || source === 'apiKeyHelper' ? 'valid' : 'missing'
+    }
     if (!isAnthropicAuthEnabled() || isClaudeAISubscriber()) {
       return 'valid'
     }
@@ -41,7 +48,7 @@ export function useApiKeyVerification(): ApiKeyVerificationResult {
   const [error, setError] = useState<Error | null>(null)
 
   const verify = useCallback(async (): Promise<void> => {
-    if (!isAnthropicAuthEnabled() || isClaudeAISubscriber()) {
+    if (getAPIProvider() !== 'deepseek' && (!isAnthropicAuthEnabled() || isClaudeAISubscriber())) {
       setStatus('valid')
       return
     }

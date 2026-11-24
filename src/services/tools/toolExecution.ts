@@ -611,6 +611,29 @@ async function checkPermissionsAndCallTool(
     progress: ToolProgress<ToolProgressData> | ProgressMessage<HookProgress>,
   ) => void,
 ): Promise<MessageUpdateLazy[]> {
+  // Check for malformed JSON arguments flagged by the message adapter
+  if (input && typeof input === 'object' && '__invalid_tool_json__' in input) {
+    const rawJson = String((input as Record<string, unknown>).__invalid_tool_json__ ?? '')
+    const parseErr = String((input as Record<string, unknown>).__parse_error__ ?? 'Malformed JSON')
+    const errorContent = `InputValidationError: ${tool.name} received malformed JSON arguments (${parseErr}). Raw input: ${rawJson.slice(0, 200)}`
+    return [
+      {
+        message: createUserMessage({
+          content: [
+            {
+              type: 'tool_result',
+              content: `<tool_use_error>${errorContent}</tool_use_error>`,
+              is_error: true,
+              tool_use_id: toolUseID,
+            },
+          ],
+          toolUseResult: `Error: ${errorContent}`,
+          sourceToolAssistantUUID: assistantMessage.uuid,
+        }),
+      },
+    ]
+  }
+
   // Validate input types with zod (surprisingly, the model is not great at generating valid input)
   const parsedInput = tool.inputSchema.safeParse(input)
   if (!parsedInput.success) {

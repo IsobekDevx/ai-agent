@@ -12,11 +12,15 @@ import {
 } from '../constants/system.js'
 import { logEvent } from '../services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../services/analytics/metadata.js'
-import { getAPIMetadata } from '../services/api/claude.js'
+import { getAPIMetadata, queryModelWithoutStreaming } from '../services/api/claude.js'
 import { getAnthropicClient } from '../services/api/client.js'
+import { getEmptyToolPermissionContext } from '../Tool.js'
 import { getModelBetas, modelSupportsStructuredOutputs } from './betas.js'
 import { computeFingerprint } from './fingerprint.js'
+import { createUserMessage } from './messages.js'
 import { normalizeModelStringForAPI } from './model/model.js'
+import { getAPIProvider, resolveDeepSeekModel } from './model/providers.js'
+import { asSystemPrompt } from './systemPromptType.js'
 
 type MessageParam = Anthropic.MessageParam
 type TextBlockParam = Anthropic.TextBlockParam
@@ -120,6 +124,48 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
     thinking,
     stop_sequences,
   } = opts
+
+  if (getAPIProvider() === 'deepseek') {
+    const resolvedModel = resolveDeepSeekModel(model)
+    const sysStrings = Array.isArray(system)
+      ? system.map(b => b.text)
+      : system
+        ? [system]
+        : []
+    const internalMessages = messages.map(m =>
+      createUserMessage({
+        content: typeof m.content === 'string' ? m.content : (m.content as any),
+      }),
+    )
+    const assistantMsg = await queryModelWithoutStreaming({
+      messages: internalMessages,
+      systemPrompt: asSystemPrompt(sysStrings),
+      thinkingConfig:
+        thinking && thinking > 0
+          ? { type: 'enabled', budgetTokens: thinking }
+          : { type: 'disabled' },
+      tools: [],
+      signal: signal ?? new AbortController().signal,
+      options: {
+        model: resolvedModel,
+        maxOutputTokensOverride: max_tokens,
+        temperatureOverride: temperature,
+        outputFormat: output_format,
+        toolChoice: tool_choice as any,
+        extraToolSchemas: tools as any,
+        isNonInteractiveSession: true,
+        hasAppendSystemPrompt: false,
+        querySource: opts.querySource,
+        agents: [],
+        mcpTools: [],
+        async getToolPermissionContext() {
+          return getEmptyToolPermissionContext()
+        },
+      },
+    })
+    setLastApiCompletionTimestamp(Date.now())
+    return assistantMsg.message
+  }
 
   const client = await getAnthropicClient({
     maxRetries,

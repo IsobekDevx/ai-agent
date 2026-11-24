@@ -74,9 +74,9 @@ export function getFilePermissionOptions({
   if (yesInputMode && onAcceptFeedbackChange) {
     options.push({
       type: 'input',
-      label: 'Yes',
+      label: 'Apply (Yes)',
       value: 'yes',
-      placeholder: 'and tell Claude what to do next',
+      placeholder: 'and tell the agent what to do next',
       onChange: onAcceptFeedbackChange,
       allowEmptySubmitToCancel: true,
       option: {
@@ -85,7 +85,7 @@ export function getFilePermissionOptions({
     });
   } else {
     options.push({
-      label: 'Yes',
+      label: 'Apply (Yes)',
       value: 'yes',
       option: {
         type: 'accept-once'
@@ -153,9 +153,9 @@ export function getFilePermissionOptions({
   if (noInputMode && onRejectFeedbackChange) {
     options.push({
       type: 'input',
-      label: 'No',
+      label: 'Reject (No)',
       value: 'no',
-      placeholder: 'and tell Claude what to do differently',
+      placeholder: 'and tell the agent what to do differently',
       onChange: onRejectFeedbackChange,
       allowEmptySubmitToCancel: true,
       option: {
@@ -165,7 +165,7 @@ export function getFilePermissionOptions({
   } else {
     // Not in input mode - simple option
     options.push({
-      label: 'No',
+      label: 'Reject (No)',
       value: 'no',
       option: {
         type: 'reject'

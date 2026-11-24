@@ -86,6 +86,24 @@ export const COST_HAIKU_45 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
+// Pricing for DeepSeek Flash / Chat: $0.27 input / $1.10 output per Mtok ($0.07 cache hit)
+export const COST_DEEPSEEK_FLASH = {
+  inputTokens: 0.27,
+  outputTokens: 1.1,
+  promptCacheWriteTokens: 0.27,
+  promptCacheReadTokens: 0.07,
+  webSearchRequests: 0,
+} as const satisfies ModelCosts
+
+// Pricing for DeepSeek V4 Pro / Reasoner: $0.55 input / $2.19 output per Mtok ($0.14 cache hit)
+export const COST_DEEPSEEK_PRO = {
+  inputTokens: 0.55,
+  outputTokens: 2.19,
+  promptCacheWriteTokens: 0.55,
+  promptCacheReadTokens: 0.14,
+  webSearchRequests: 0,
+} as const satisfies ModelCosts
+
 const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
 
 /**
@@ -123,6 +141,10 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
     COST_TIER_5_25,
   [firstPartyNameToCanonical(CLAUDE_OPUS_4_6_CONFIG.firstParty)]:
     COST_TIER_5_25,
+  'deepseek-flash': COST_DEEPSEEK_FLASH,
+  'deepseek-chat': COST_DEEPSEEK_FLASH,
+  'deepseek-v4-pro': COST_DEEPSEEK_PRO,
+  'deepseek-reasoner': COST_DEEPSEEK_PRO,
 }
 
 /**

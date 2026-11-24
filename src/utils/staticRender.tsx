@@ -98,7 +98,7 @@ export function renderToAnsiString(node: React.ReactNode, columns?: number): Pro
     });
 
     // Wait for the component to exit naturally
-    await instance.waitUntilExit();
+    await instance.waitUntilExit().catch(() => {});
 
     // Extract only the first frame's content to avoid duplication
     // (Ink outputs multiple frames in non-TTY mode)
