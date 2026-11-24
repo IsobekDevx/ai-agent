@@ -8,8 +8,8 @@ import { formatOutput } from '../tools/BashTool/utils.js'
 import type {
   NotebookCell,
   NotebookCellOutput,
-  NotebookCellSource,
-  NotebookCellSourceOutput,
+  ProcessedNotebookCell,
+  ProcessedNotebookCellOutput,
   NotebookContent,
   NotebookOutputImage,
 } from '../types/notebook.js'
@@ -20,7 +20,7 @@ import { jsonParse } from './slowOperations.js'
 const LARGE_OUTPUT_THRESHOLD = 10000
 
 function isLargeOutputs(
-  outputs: (NotebookCellSourceOutput | undefined)[],
+  outputs: (ProcessedNotebookCellOutput | undefined)[],
 ): boolean {
   let size = 0
   for (const o of outputs) {
@@ -85,9 +85,9 @@ function processCell(
   index: number,
   codeLanguage: string,
   includeLargeOutputs: boolean,
-): NotebookCellSource {
+): ProcessedNotebookCell {
   const cellId = cell.id ?? `cell-${index}`
-  const cellData: NotebookCellSource = {
+  const cellData: ProcessedNotebookCell = {
     cellType: cell.cell_type,
     source: Array.isArray(cell.source) ? cell.source.join('') : cell.source,
     execution_count:
@@ -100,7 +100,11 @@ function processCell(
   }
 
   if (cell.cell_type === 'code' && cell.outputs?.length) {
-    const outputs = cell.outputs.map(processOutput)
+    const outputs = cell.outputs
+      .map(processOutput)
+      .filter(
+        (output): output is NotebookCellSourceOutput => output !== undefined,
+      )
     if (!includeLargeOutputs && isLargeOutputs(outputs)) {
       cellData.outputs = [
         {
@@ -116,7 +120,7 @@ function processCell(
   return cellData
 }
 
-function cellContentToToolResult(cell: NotebookCellSource): TextBlockParam {
+function cellContentToToolResult(cell: ProcessedNotebookCell): TextBlockParam {
   const metadata = []
   if (cell.cellType !== 'code') {
     metadata.push(`<cell_type>${cell.cellType}</cell_type>`)
@@ -131,7 +135,7 @@ function cellContentToToolResult(cell: NotebookCellSource): TextBlockParam {
   }
 }
 
-function cellOutputToToolResult(output: NotebookCellSourceOutput) {
+function cellOutputToToolResult(output: ProcessedNotebookCellOutput) {
   const outputs: (TextBlockParam | ImageBlockParam)[] = []
   if (output.text) {
     outputs.push({
@@ -152,7 +156,7 @@ function cellOutputToToolResult(output: NotebookCellSourceOutput) {
   return outputs
 }
 
-function getToolResultFromCell(cell: NotebookCellSource) {
+function getToolResultFromCell(cell: ProcessedNotebookCell) {
   const contentResult = cellContentToToolResult(cell)
   const outputResults = cell.outputs?.flatMap(cellOutputToToolResult)
   return [contentResult, ...(outputResults ?? [])]
@@ -164,7 +168,7 @@ function getToolResultFromCell(cell: NotebookCellSource) {
 export async function readNotebook(
   notebookPath: string,
   cellId?: string,
-): Promise<NotebookCellSource[]> {
+): Promise<ProcessedNotebookCell[]> {
   const fullPath = expandPath(notebookPath)
   const buffer = await getFsImplementation().readFileBytes(fullPath)
   const content = buffer.toString('utf-8')
@@ -186,7 +190,7 @@ export async function readNotebook(
  * Maps notebook cell data to tool result block parameters with sophisticated text block merging
  */
 export function mapNotebookCellsToToolResult(
-  data: NotebookCellSource[],
+  data: ProcessedNotebookCell[],
   toolUseID: string,
 ): ToolResultBlockParam {
   const allResults = data.flatMap(getToolResultFromCell)
